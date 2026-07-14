@@ -69,6 +69,10 @@ def main():
     if not cap.isOpened():
         raise RuntimeError("Không mở được webcam. Kiểm tra webcam có đang được ứng dụng khác dùng không.")
 
+    window_name = "Webcam Mouse Control - preview"
+    cv2.namedWindow(window_name, cv2.WINDOW_NORMAL)
+    cv2.resizeWindow(window_name, 1024, 768)
+
     smoothed_x, smoothed_y = None, None
     is_dragging = False
     frames_since_hand_seen = HAND_LOST_GRACE_FRAMES
@@ -120,7 +124,7 @@ def main():
             cv2.putText(frame, "Nhan 'q' de thoat", (10, frame_h - 15),
                         cv2.FONT_HERSHEY_SIMPLEX, 0.6, (255, 255, 255), 1)
 
-            cv2.imshow("Webcam Mouse Control - preview", frame)
+            cv2.imshow(window_name, frame)
             if cv2.waitKey(1) & 0xFF == ord("q"):
                 break
     finally:
