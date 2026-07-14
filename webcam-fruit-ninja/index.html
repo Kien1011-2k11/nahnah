@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Webcam Fruit Ninja</title>
+<link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <div id="app">
+    <video id="webcam" autoplay playsinline muted></video>
+    <canvas id="game"></canvas>
+
+    <div id="hud">
+      <div id="score">Điểm: 0</div>
+      <div id="lives">❤️❤️❤️</div>
+      <div id="handStatus" class="status-dot status-off" title="Trạng thái nhận diện tay"></div>
+    </div>
+
+    <div id="menu" class="overlay">
+      <h1>🍉 Webcam Fruit Ninja 🔪</h1>
+      <p>Đưa tay lên trước webcam, dùng ngón trỏ vung tay để chém trái cây.<br/>Né bom 💣 — chạm bom là thua ngay!</p>
+      <button id="startBtn">Bắt đầu chơi</button>
+      <p id="camError" class="error"></p>
+    </div>
+
+    <div id="gameOver" class="overlay hidden">
+      <h1>Kết thúc!</h1>
+      <p id="finalScore">Điểm: 0</p>
+      <p id="highScore">Điểm cao nhất: 0</p>
+      <button id="restartBtn">Chơi lại</button>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/@mediapipe/hands@0.4/hands.js" crossorigin="anonymous"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils@0.3/camera_utils.js" crossorigin="anonymous"></script>
+  <script src="game.js"></script>
+</body>
+</html>
