@@ -1,9 +1,10 @@
 """Control the real mouse cursor with your index fingertip via webcam.
 
-Run this alongside a browser tab (e.g. Fruit Ninja on Poki): while your
-hand is visible the left mouse button stays held down and the cursor
-follows your fingertip, so a hand swipe becomes a click-and-drag slice.
-Press 'q' in the preview window to quit.
+Run this alongside a browser tab (e.g. Fruit Ninja on Poki). Press 'p' in
+the preview window to arm/disarm hand control: while armed and a hand is
+visible, the left mouse button stays held down and the cursor follows
+your fingertip, so a hand swipe becomes a click-and-drag slice. Disarm it
+to get your real mouse back. Press 'q' in the preview window to quit.
 
 Uses MediaPipe's Tasks API (HandLandmarker) rather than the older
 mp.solutions API, which recent mediapipe releases no longer ship on
@@ -76,6 +77,7 @@ def main():
     smoothed_x, smoothed_y = None, None
     is_dragging = False
     frames_since_hand_seen = HAND_LOST_GRACE_FRAMES
+    control_enabled = False
 
     try:
         while True:
@@ -92,10 +94,11 @@ def main():
             hand_seen_this_frame = bool(result.hand_landmarks)
 
             if hand_seen_this_frame:
-                frames_since_hand_seen = 0
                 landmarks = result.hand_landmarks[0]
                 draw_hand(frame, landmarks, frame_w, frame_h)
 
+            if control_enabled and hand_seen_this_frame:
+                frames_since_hand_seen = 0
                 tip = landmarks[INDEX_FINGERTIP]
                 target_x = tip.x * screen_w
                 target_y = tip.y * screen_h
@@ -118,15 +121,25 @@ def main():
                     is_dragging = False
                     smoothed_x, smoothed_y = None, None
 
-            status = "DANG CHEM (hand detected)" if hand_seen_this_frame else "Khong thay tay"
-            cv2.putText(frame, status, (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 0.8,
+            control_text = "DIEU KHIEN: BAT" if control_enabled else "DIEU KHIEN: TAT (chuot binh thuong)"
+            cv2.putText(frame, control_text, (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 0.8,
+                        (0, 255, 0) if control_enabled else (0, 165, 255), 2)
+            hand_text = "Thay tay" if hand_seen_this_frame else "Khong thay tay"
+            cv2.putText(frame, hand_text, (10, 60), cv2.FONT_HERSHEY_SIMPLEX, 0.7,
                         (0, 255, 0) if hand_seen_this_frame else (0, 0, 255), 2)
-            cv2.putText(frame, "Nhan 'q' de thoat", (10, frame_h - 15),
+            cv2.putText(frame, "'p' bat/tat dieu khien - 'q' thoat", (10, frame_h - 15),
                         cv2.FONT_HERSHEY_SIMPLEX, 0.6, (255, 255, 255), 1)
 
             cv2.imshow(window_name, frame)
-            if cv2.waitKey(1) & 0xFF == ord("q"):
+            key = cv2.waitKey(1) & 0xFF
+            if key == ord("q"):
                 break
+            if key == ord("p"):
+                control_enabled = not control_enabled
+                if not control_enabled and is_dragging:
+                    pyautogui.mouseUp(button="left")
+                    is_dragging = False
+                    smoothed_x, smoothed_y = None, None
     finally:
         if is_dragging:
             pyautogui.mouseUp(button="left")
