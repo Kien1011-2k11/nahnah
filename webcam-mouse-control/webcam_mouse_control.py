@@ -4,30 +4,66 @@ Run this alongside a browser tab (e.g. Fruit Ninja on Poki): while your
 hand is visible the left mouse button stays held down and the cursor
 follows your fingertip, so a hand swipe becomes a click-and-drag slice.
 Press 'q' in the preview window to quit.
+
+Uses MediaPipe's Tasks API (HandLandmarker) rather than the older
+mp.solutions API, which recent mediapipe releases no longer ship on
+some platforms/Python versions.
 """
+
+import os
+import urllib.request
 
 import cv2
 import mediapipe as mp
 import pyautogui
+from mediapipe.tasks import python as mp_python
+from mediapipe.tasks.python import vision as mp_vision
 
 INDEX_FINGERTIP = 8
 SMOOTHING = 0.5  # 0 = no smoothing, closer to 1 = smoother but laggier
 HAND_LOST_GRACE_FRAMES = 5  # tolerate brief missed detections before releasing
 
+MODEL_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "hand_landmarker.task")
+MODEL_URL = (
+    "https://storage.googleapis.com/mediapipe-models/hand_landmarker/"
+    "hand_landmarker/float16/latest/hand_landmarker.task"
+)
+
 pyautogui.PAUSE = 0
 pyautogui.FAILSAFE = False
 
 
-def main():
-    screen_w, screen_h = pyautogui.size()
+def ensure_model():
+    if not os.path.exists(MODEL_PATH):
+        print("Đang tải model nhận diện bàn tay (chỉ tải 1 lần)...")
+        urllib.request.urlretrieve(MODEL_URL, MODEL_PATH)
+        print("Tải xong.")
 
-    hands = mp.solutions.hands.Hands(
-        static_image_mode=False,
-        max_num_hands=1,
-        min_detection_confidence=0.6,
+
+def make_landmarker():
+    options = mp_vision.HandLandmarkerOptions(
+        base_options=mp_python.BaseOptions(model_asset_path=MODEL_PATH),
+        running_mode=mp_vision.RunningMode.IMAGE,
+        num_hands=1,
+        min_hand_detection_confidence=0.6,
+        min_hand_presence_confidence=0.5,
         min_tracking_confidence=0.5,
     )
-    drawer = mp.solutions.drawing_utils
+    return mp_vision.HandLandmarker.create_from_options(options)
+
+
+def draw_hand(frame, hand_landmarks, frame_w, frame_h):
+    points = [(int(lm.x * frame_w), int(lm.y * frame_h)) for lm in hand_landmarks]
+    for x, y in points:
+        cv2.circle(frame, (x, y), 3, (0, 200, 255), -1)
+    tip_x, tip_y = points[INDEX_FINGERTIP]
+    cv2.circle(frame, (tip_x, tip_y), 10, (0, 255, 0), -1)
+
+
+def main():
+    ensure_model()
+    screen_w, screen_h = pyautogui.size()
+    landmarker = make_landmarker()
 
     cap = cv2.VideoCapture(0)
     if not cap.isOpened():
@@ -45,16 +81,18 @@ def main():
 
             frame = cv2.flip(frame, 1)  # mirror view, matches natural hand movement
             frame_h, frame_w = frame.shape[:2]
-            results = hands.process(cv2.cvtColor(frame, cv2.COLOR_BGR2RGB))
+            rgb_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+            mp_image = mp.Image(image_format=mp.ImageFormat.SRGB, data=rgb_frame)
+            result = landmarker.detect(mp_image)
 
-            hand_seen_this_frame = bool(results.multi_hand_landmarks)
+            hand_seen_this_frame = bool(result.hand_landmarks)
 
             if hand_seen_this_frame:
                 frames_since_hand_seen = 0
-                landmarks = results.multi_hand_landmarks[0]
-                drawer.draw_landmarks(frame, landmarks, mp.solutions.hands.HAND_CONNECTIONS)
+                landmarks = result.hand_landmarks[0]
+                draw_hand(frame, landmarks, frame_w, frame_h)
 
-                tip = landmarks.landmark[INDEX_FINGERTIP]
+                tip = landmarks[INDEX_FINGERTIP]
                 target_x = tip.x * screen_w
                 target_y = tip.y * screen_h
 
@@ -69,8 +107,6 @@ def main():
                 if not is_dragging:
                     pyautogui.mouseDown(button="left")
                     is_dragging = True
-
-                cv2.circle(frame, (int(tip.x * frame_w), int(tip.y * frame_h)), 10, (0, 255, 0), -1)
             else:
                 frames_since_hand_seen += 1
                 if is_dragging and frames_since_hand_seen >= HAND_LOST_GRACE_FRAMES:
@@ -92,7 +128,7 @@ def main():
             pyautogui.mouseUp(button="left")
         cap.release()
         cv2.destroyAllWindows()
-        hands.close()
+        landmarker.close()
 
 
 if __name__ == "__main__":
