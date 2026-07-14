@@ -1,10 +1,12 @@
 """Control the real mouse cursor with your index fingertip via webcam.
 
 Run this alongside a browser tab (e.g. Fruit Ninja on Poki). Press 'p' in
-the preview window to arm/disarm hand control: while armed and a hand is
-visible, the left mouse button stays held down and the cursor follows
-your fingertip, so a hand swipe becomes a click-and-drag slice. Disarm it
-to get your real mouse back. Press 'q' in the preview window to quit.
+the preview window to arm/disarm hand control. While armed, the cursor
+follows your index fingertip: hold up just your index finger (other
+fingers curled) to hold the left mouse button down and slice, or open
+your palm to move the cursor without clicking. Disarm control (or show
+no hand) to get your real mouse back. Press 'q' in the preview window
+to quit.
 
 Uses MediaPipe's Tasks API (HandLandmarker) rather than the older
 mp.solutions API, which recent mediapipe releases no longer ship on
@@ -53,12 +55,30 @@ def make_landmarker():
     return mp_vision.HandLandmarker.create_from_options(options)
 
 
-def draw_hand(frame, hand_landmarks, frame_w, frame_h):
+def draw_hand(frame, hand_landmarks, frame_w, frame_h, pointing):
     points = [(int(lm.x * frame_w), int(lm.y * frame_h)) for lm in hand_landmarks]
     for x, y in points:
         cv2.circle(frame, (x, y), 3, (0, 200, 255), -1)
     tip_x, tip_y = points[INDEX_FINGERTIP]
-    cv2.circle(frame, (tip_x, tip_y), 10, (0, 255, 0), -1)
+    cv2.circle(frame, (tip_x, tip_y), 10, (0, 0, 255) if pointing else (0, 255, 0), -1)
+
+
+def _dist(a, b):
+    return ((a.x - b.x) ** 2 + (a.y - b.y) ** 2) ** 0.5
+
+
+def is_pointing_gesture(landmarks):
+    """True when only the index finger is extended (others curled into the palm)."""
+    wrist = landmarks[0]
+
+    def extended(tip_idx, pip_idx):
+        return _dist(landmarks[tip_idx], wrist) > _dist(landmarks[pip_idx], wrist)
+
+    index_extended = extended(8, 6)
+    middle_curled = not extended(12, 10)
+    ring_curled = not extended(16, 14)
+    pinky_curled = not extended(20, 18)
+    return index_extended and middle_curled and ring_curled and pinky_curled
 
 
 def main():
@@ -92,10 +112,12 @@ def main():
             result = landmarker.detect(mp_image)
 
             hand_seen_this_frame = bool(result.hand_landmarks)
+            pointing = False
 
             if hand_seen_this_frame:
                 landmarks = result.hand_landmarks[0]
-                draw_hand(frame, landmarks, frame_w, frame_h)
+                pointing = is_pointing_gesture(landmarks)
+                draw_hand(frame, landmarks, frame_w, frame_h, pointing)
 
             if control_enabled and hand_seen_this_frame:
                 frames_since_hand_seen = 0
@@ -111,9 +133,12 @@ def main():
 
                 pyautogui.moveTo(int(smoothed_x), int(smoothed_y))
 
-                if not is_dragging:
+                if pointing and not is_dragging:
                     pyautogui.mouseDown(button="left")
                     is_dragging = True
+                elif not pointing and is_dragging:
+                    pyautogui.mouseUp(button="left")
+                    is_dragging = False
             else:
                 frames_since_hand_seen += 1
                 if is_dragging and frames_since_hand_seen >= HAND_LOST_GRACE_FRAMES:
@@ -124,9 +149,13 @@ def main():
             control_text = "DIEU KHIEN: BAT" if control_enabled else "DIEU KHIEN: TAT (chuot binh thuong)"
             cv2.putText(frame, control_text, (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 0.8,
                         (0, 255, 0) if control_enabled else (0, 165, 255), 2)
-            hand_text = "Thay tay" if hand_seen_this_frame else "Khong thay tay"
-            cv2.putText(frame, hand_text, (10, 60), cv2.FONT_HERSHEY_SIMPLEX, 0.7,
-                        (0, 255, 0) if hand_seen_this_frame else (0, 0, 255), 2)
+            if hand_seen_this_frame:
+                gesture_text = "Cu chi: NGON TRO (giu chuot)" if pointing else "Cu chi: BAN TAY XOE (di chuyen)"
+                gesture_color = (0, 0, 255) if pointing else (0, 255, 0)
+            else:
+                gesture_text = "Khong thay tay"
+                gesture_color = (0, 0, 255)
+            cv2.putText(frame, gesture_text, (10, 60), cv2.FONT_HERSHEY_SIMPLEX, 0.7, gesture_color, 2)
             cv2.putText(frame, "'p' bat/tat dieu khien - 'q' thoat", (10, frame_h - 15),
                         cv2.FONT_HERSHEY_SIMPLEX, 0.6, (255, 255, 255), 1)
 
