@@ -16,3 +16,16 @@ body {
 #status {
   font-weight: bold;
 }
+
+#games-table {
+  border-collapse: collapse;
+  margin-bottom: 24px;
+  min-width: 500px;
+}
+
+#games-table th,
+#games-table td {
+  border: 1px solid #ccc;
+  padding: 8px 12px;
+  text-align: left;
+}

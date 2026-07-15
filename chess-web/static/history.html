@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8" />
+  <title>Lịch sử ván đấu</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/chessboard-js/1.0.0/chessboard-1.0.0.min.css" />
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <h1>Lịch sử ván đấu</h1>
+  <p><a href="index.html">&larr; Quay lại chơi cờ</a></p>
+
+  <table id="games-table">
+    <thead>
+      <tr>
+        <th>Thời gian</th>
+        <th>Kết quả</th>
+        <th>Elo bot</th>
+        <th></th>
+      </tr>
+    </thead>
+    <tbody></tbody>
+  </table>
+
+  <div id="replay-section" style="display: none">
+    <h2>Xem lại ván đấu</h2>
+    <div id="replay-board" style="width: 400px"></div>
+    <div class="controls">
+      <button id="replay-prev">&laquo; Nước trước</button>
+      <span id="replay-move-counter"></span>
+      <button id="replay-next">Nước sau &raquo;</button>
+    </div>
+  </div>
+
+  <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/chess.js/0.10.3/chess.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/chessboard-js/1.0.0/chessboard-1.0.0.min.js"></script>
+  <script src="history.js"></script>
+</body>
+</html>

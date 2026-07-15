@@ -5,6 +5,7 @@ const eloValue = document.getElementById("eloValue");
 
 const PLAYER_COLOR = "w";
 let botThinking = false;
+let gameSaved = false;
 
 eloInput.addEventListener("input", () => {
   eloValue.textContent = eloInput.value;
@@ -65,19 +66,37 @@ async function botMove() {
 
 function updateStatus(botBlundered) {
   if (game.in_checkmate()) {
-    statusEl.textContent = "Chiếu bí! " + (game.turn() === "w" ? "Đen" : "Trắng") + " thắng.";
+    const winner = game.turn() === "w" ? "black" : "white";
+    statusEl.textContent = "Chiếu bí! " + (winner === "white" ? "Trắng" : "Đen") + " thắng.";
+    saveGameResult(winner);
     return;
   }
   if (game.in_draw()) {
     statusEl.textContent = "Hòa cờ.";
+    saveGameResult("draw");
     return;
   }
   statusEl.textContent = botBlundered ? "Bot vừa đi hớ (blunder)!" : "Tới lượt " + (game.turn() === "w" ? "Trắng" : "Đen");
+}
+
+async function saveGameResult(result) {
+  if (gameSaved) return;
+  gameSaved = true;
+  try {
+    await fetch("/save-game", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ result, elo: Number(eloInput.value), pgn: game.pgn() }),
+    });
+  } catch (err) {
+    console.error("Không lưu được ván đấu:", err);
+  }
 }
 
 document.getElementById("resetBtn").addEventListener("click", () => {
   game.reset();
   board.position("start");
   botThinking = false;
+  gameSaved = false;
   statusEl.textContent = "";
 });
