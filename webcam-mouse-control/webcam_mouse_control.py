@@ -2,11 +2,13 @@
 
 Run this alongside a browser tab (e.g. Fruit Ninja on Poki). Press 'p' in
 the preview window to arm/disarm hand control. While armed, the cursor
-follows your index fingertip: hold up just your index finger (other
-fingers curled) to hold the left mouse button down and slice, or open
-your palm to move the cursor without clicking. Disarm control (or show
-no hand) to get your real mouse back. Press 'q' in the preview window
-to quit.
+moves like a real mouse: it tracks your fingertip's *motion*, not its
+absolute position, with speed-based acceleration, so small/slow hand
+movement needs little arm effort and fast swipes travel further. Hold up
+just your index finger (other fingers curled) to hold the left mouse
+button down and slice, or open your palm to move the cursor without
+clicking. Disarm control (or show no hand) to get your real mouse back.
+Press 'q' in the preview window to quit.
 
 Uses MediaPipe's Tasks API (HandLandmarker) rather than the older
 mp.solutions API, which recent mediapipe releases no longer ship on
@@ -23,8 +25,18 @@ from mediapipe.tasks import python as mp_python
 from mediapipe.tasks.python import vision as mp_vision
 
 INDEX_FINGERTIP = 8
-SMOOTHING = 0.5  # 0 = no smoothing, closer to 1 = smoother but laggier
+SMOOTHING = 0.35  # 0 = no smoothing, closer to 1 = smoother but laggier
 HAND_LOST_GRACE_FRAMES = 5  # tolerate brief missed detections before releasing
+
+# Relative "real mouse" motion tuning: the cursor moves based on how fast your
+# fingertip is moving, like a physical mouse, instead of jumping to an
+# absolute screen position mapped from the frame. Small/slow motion needs
+# little arm movement; fast swipes travel further across the screen.
+DEADZONE_PX = 1.5        # ignore jitter smaller than this many frame-pixels
+BASE_SENSITIVITY = 4.0   # screen-pixels moved per frame-pixel of fingertip motion
+ACCEL_START_PX = 12.0    # frame-pixel speed where extra acceleration kicks in
+ACCEL_GAIN = 0.35        # extra sensitivity per frame-pixel of speed above ACCEL_START_PX
+MAX_SENSITIVITY = 14.0   # cap so fast swipes don't fling the cursor off-screen
 
 MODEL_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "hand_landmarker.task")
 MODEL_URL = (
@@ -81,9 +93,18 @@ def is_pointing_gesture(landmarks):
     return index_extended and middle_curled and ring_curled and pinky_curled
 
 
+def relative_move(dx, dy):
+    """Turn a raw fingertip-motion delta (frame pixels) into a mouse-like offset."""
+    speed = (dx * dx + dy * dy) ** 0.5
+    if speed < DEADZONE_PX:
+        return 0.0, 0.0
+    sensitivity = BASE_SENSITIVITY + max(0.0, speed - ACCEL_START_PX) * ACCEL_GAIN
+    sensitivity = min(sensitivity, MAX_SENSITIVITY)
+    return dx * sensitivity, dy * sensitivity
+
+
 def main():
     ensure_model()
-    screen_w, screen_h = pyautogui.size()
     landmarker = make_landmarker()
 
     cap = cv2.VideoCapture(0)
@@ -94,7 +115,8 @@ def main():
     cv2.namedWindow(window_name, cv2.WINDOW_NORMAL)
     cv2.resizeWindow(window_name, 1024, 768)
 
-    smoothed_x, smoothed_y = None, None
+    smoothed_x, smoothed_y = None, None  # EMA-filtered fingertip position, in frame pixels
+    remainder_x, remainder_y = 0.0, 0.0  # sub-pixel leftovers so slow motion isn't lost to rounding
     is_dragging = False
     frames_since_hand_seen = HAND_LOST_GRACE_FRAMES
     control_enabled = False
@@ -122,16 +144,23 @@ def main():
             if control_enabled and hand_seen_this_frame:
                 frames_since_hand_seen = 0
                 tip = landmarks[INDEX_FINGERTIP]
-                target_x = tip.x * screen_w
-                target_y = tip.y * screen_h
+                tip_x, tip_y = tip.x * frame_w, tip.y * frame_h
 
                 if smoothed_x is None:
-                    smoothed_x, smoothed_y = target_x, target_y
+                    smoothed_x, smoothed_y = tip_x, tip_y
                 else:
-                    smoothed_x = smoothed_x * SMOOTHING + target_x * (1 - SMOOTHING)
-                    smoothed_y = smoothed_y * SMOOTHING + target_y * (1 - SMOOTHING)
+                    prev_x, prev_y = smoothed_x, smoothed_y
+                    smoothed_x = smoothed_x * SMOOTHING + tip_x * (1 - SMOOTHING)
+                    smoothed_y = smoothed_y * SMOOTHING + tip_y * (1 - SMOOTHING)
 
-                pyautogui.moveTo(int(smoothed_x), int(smoothed_y))
+                    move_x, move_y = relative_move(smoothed_x - prev_x, smoothed_y - prev_y)
+                    remainder_x += move_x
+                    remainder_y += move_y
+                    step_x, step_y = int(remainder_x), int(remainder_y)
+                    remainder_x -= step_x
+                    remainder_y -= step_y
+                    if step_x or step_y:
+                        pyautogui.moveRel(step_x, step_y)
 
                 if pointing and not is_dragging:
                     pyautogui.mouseDown(button="left")
@@ -144,7 +173,9 @@ def main():
                 if is_dragging and frames_since_hand_seen >= HAND_LOST_GRACE_FRAMES:
                     pyautogui.mouseUp(button="left")
                     is_dragging = False
+                if frames_since_hand_seen >= HAND_LOST_GRACE_FRAMES:
                     smoothed_x, smoothed_y = None, None
+                    remainder_x, remainder_y = 0.0, 0.0
 
             control_text = "DIEU KHIEN: BAT" if control_enabled else "DIEU KHIEN: TAT (chuot binh thuong)"
             cv2.putText(frame, control_text, (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 0.8,
@@ -168,7 +199,8 @@ def main():
                 if not control_enabled and is_dragging:
                     pyautogui.mouseUp(button="left")
                     is_dragging = False
-                    smoothed_x, smoothed_y = None, None
+                smoothed_x, smoothed_y = None, None
+                remainder_x, remainder_y = 0.0, 0.0
     finally:
         if is_dragging:
             pyautogui.mouseUp(button="left")
