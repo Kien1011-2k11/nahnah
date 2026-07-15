@@ -10,7 +10,7 @@ eloInput.addEventListener("input", () => {
 const board = Chessboard("board", {
   draggable: true,
   position: "start",
-  pieceTheme: "pieces/{piece}.svg",
+  pieceTheme: "pieces/{piece}.png",
   onDrop: handleMove,
 });
 
