@@ -5,10 +5,11 @@ the preview window to arm/disarm hand control. While armed, the cursor
 moves like a real mouse: it tracks your fingertip's *motion*, not its
 absolute position, with speed-based acceleration, so small/slow hand
 movement needs little arm effort and fast swipes travel further. Hold up
-just your index finger (other fingers curled) to hold the left mouse
-button down and slice, or open your palm to move the cursor without
-clicking. Disarm control (or show no hand) to get your real mouse back.
-Press 'q' in the preview window to quit.
+just your index finger, or index+middle together ("scissors" ✌, ring and
+pinky curled), to hold the left mouse button down and slice; open your
+palm to move the cursor without clicking. Disarm control (or show no
+hand) to get your real mouse back. Press 'q' in the preview window to
+quit.
 
 Uses MediaPipe's Tasks API (HandLandmarker) rather than the older
 mp.solutions API, which recent mediapipe releases no longer ship on
@@ -80,17 +81,20 @@ def _dist(a, b):
 
 
 def is_pointing_gesture(landmarks):
-    """True when only the index finger is extended (others curled into the palm)."""
+    """True for a click gesture: index-only ("point"), or index+middle ("scissors ✌")."""
     wrist = landmarks[0]
 
     def extended(tip_idx, pip_idx):
         return _dist(landmarks[tip_idx], wrist) > _dist(landmarks[pip_idx], wrist)
 
     index_extended = extended(8, 6)
-    middle_curled = not extended(12, 10)
+    middle_extended = extended(12, 10)
     ring_curled = not extended(16, 14)
     pinky_curled = not extended(20, 18)
-    return index_extended and middle_curled and ring_curled and pinky_curled
+
+    single_finger_point = index_extended and not middle_extended
+    scissors = index_extended and middle_extended
+    return (single_finger_point or scissors) and ring_curled and pinky_curled
 
 
 def relative_move(dx, dy):
@@ -181,7 +185,7 @@ def main():
             cv2.putText(frame, control_text, (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 0.8,
                         (0, 255, 0) if control_enabled else (0, 165, 255), 2)
             if hand_seen_this_frame:
-                gesture_text = "Cu chi: NGON TRO (giu chuot)" if pointing else "Cu chi: BAN TAY XOE (di chuyen)"
+                gesture_text = "Cu chi: TRO/KEO (giu chuot)" if pointing else "Cu chi: BAN TAY XOE (di chuyen)"
                 gesture_color = (0, 0, 255) if pointing else (0, 255, 0)
             else:
                 gesture_text = "Khong thay tay"
