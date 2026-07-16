@@ -184,12 +184,15 @@ def main():
             control_text = "DIEU KHIEN: BAT" if control_enabled else "DIEU KHIEN: TAT (chuot binh thuong)"
             cv2.putText(frame, control_text, (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 0.8,
                         (0, 255, 0) if control_enabled else (0, 165, 255), 2)
-            if hand_seen_this_frame:
-                gesture_text = "Cu chi: TRO/KEO (giu chuot)" if pointing else "Cu chi: BAN TAY XOE (di chuyen)"
-                gesture_color = (0, 0, 255) if pointing else (0, 255, 0)
+            if is_dragging:
+                gesture_text = "DANG GIU CHUOT TRAI (click)"
+                gesture_color = (0, 0, 255)
+            elif hand_seen_this_frame:
+                gesture_text = "Cu chi: TRO/KEO (se giu chuot)" if pointing else "Cu chi: BAN TAY XOE (chi di chuyen)"
+                gesture_color = (0, 165, 255) if pointing else (0, 255, 0)
             else:
                 gesture_text = "Khong thay tay"
-                gesture_color = (0, 0, 255)
+                gesture_color = (128, 128, 128)
             cv2.putText(frame, gesture_text, (10, 60), cv2.FONT_HERSHEY_SIMPLEX, 0.7, gesture_color, 2)
             cv2.putText(frame, "'p' bat/tat dieu khien - 'q' thoat", (10, frame_h - 15),
                         cv2.FONT_HERSHEY_SIMPLEX, 0.6, (255, 255, 255), 1)
