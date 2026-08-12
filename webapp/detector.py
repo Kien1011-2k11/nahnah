@@ -140,7 +140,9 @@ def process_video(video_path, output_path, weights_path, job, job_lock, crops_di
 
     tracked_plates = []
     next_id = 1
-    emitted_track_ids = set()
+    emitted_plate_texts = set()   # ⭐ chặn theo TEXT đã đọc được, không phải theo track_id -> xe
+                                    #   rời khung rồi quay lại (track_id đổi) vẫn không bị in lại
+    result_seq = 0
     frame_idx = 0
 
     while cap.isOpened():
@@ -193,11 +195,12 @@ def process_video(video_path, output_path, weights_path, job, job_lock, crops_di
             _draw_boxes(frame, x1, y1, x2, y2, text)
 
             if (
-                plate_id not in emitted_track_ids
+                text not in emitted_plate_texts
                 and valid_char_count(text) >= MIN_VALID_CHARS
                 and is_valid_plate_structure(text)
             ):
-                emitted_track_ids.add(plate_id)
+                emitted_plate_texts.add(text)
+                result_seq += 1
                 bw, bh = x2 - x1, y2 - y1
                 vx1 = max(0, x1 - bw)
                 vy1 = max(0, y1 - bh)
@@ -206,7 +209,7 @@ def process_video(video_path, output_path, weights_path, job, job_lock, crops_di
                 vehicle_crop = clean_frame[vy1:vy2, vx1:vx2]
                 plate_crop = clean_frame[y1:y2, x1:x2]
 
-                seq = len(emitted_track_ids)
+                seq = result_seq
                 vehicle_name = f"{job_id}_{seq}_vehicle.jpg"
                 plate_name = f"{job_id}_{seq}_plate.jpg"
                 cv2.imwrite(os.path.join(crops_dir, vehicle_name), vehicle_crop)
