@@ -1,0 +1,8 @@
+uploads/*
+!uploads/.gitkeep
+outputs/*
+!outputs/.gitkeep
+!outputs/crops
+outputs/crops/*
+!outputs/crops/.gitkeep
+best.pt

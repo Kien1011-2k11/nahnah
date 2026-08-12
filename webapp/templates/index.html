@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<title>Tracking ANPR</title>
+<link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+  <header class="topbar">
+    <nav class="topnav">
+      <a href="#">Test ANPR</a>
+      <a href="#">Lịch sử</a>
+      <a href="#">Cài đặt</a>
+      <a href="#">Giới thiệu</a>
+    </nav>
+  </header>
+
+  <div class="brand">
+    <div class="brand-logo">🚗</div>
+    <div>
+      <h1>Tracking ANPR</h1>
+      <p>Giải pháp đếm xe và nhận diện biển số tự động</p>
+    </div>
+  </div>
+
+  <main class="content">
+    <section class="analysis-panel">
+      <div class="panel-header">
+        <span>PHÂN TÍCH VIDEO</span>
+      </div>
+
+      <div id="dropzone" class="dropzone">
+        <input type="file" id="fileInput" accept="video/*" hidden>
+        <button id="chooseBtn" class="choose-btn">Chọn tệp ⌄</button>
+        <div class="drop-arrow">⬇</div>
+        <p>Thả video vào đây</p>
+      </div>
+
+      <div id="processing" class="processing-view" hidden>
+        <div class="spinner"></div>
+        <p id="processingText">Đang phân tích video...</p>
+        <div class="progress-bar"><div id="progressFill" class="progress-fill"></div></div>
+      </div>
+
+      <video id="resultVideo" class="result-video" controls hidden></video>
+
+      <div id="errorBox" class="error-box" hidden></div>
+    </section>
+
+    <aside class="results-panel">
+      <div class="results-header">
+        <span>KẾT QUẢ NHẬN DIỆN</span>
+        <span class="total-count">Tổng: <span id="totalCount">0</span></span>
+      </div>
+      <div class="search-row">
+        <input type="text" id="searchInput" placeholder="Tìm biển số...">
+        <button id="searchBtn">🔍</button>
+      </div>
+      <div id="resultsList" class="results-list"></div>
+    </aside>
+  </main>
+
+  <script src="{{ url_for('static', filename='js/main.js') }}"></script>
+</body>
+</html>
