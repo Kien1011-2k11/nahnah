@@ -13,6 +13,11 @@
 
 * { box-sizing: border-box; }
 
+/* ⭐ FIX: .dropzone/.processing-view/.result-video tự đặt display:flex/block riêng, cùng độ
+   ưu tiên CSS với rule [hidden] mặc định của trình duyệt nhưng load sau nên thắng -> gán
+   thuộc tính hidden bằng JS không ẩn được các khối này. Ép [hidden] luôn thắng bằng !important. */
+[hidden] { display: none !important; }
+
 body {
   margin: 0;
   font-family: "Segoe UI", Arial, sans-serif;
