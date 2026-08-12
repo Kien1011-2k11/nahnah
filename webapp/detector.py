@@ -174,7 +174,7 @@ def process_video(video_path, output_path, weights_path, job, job_lock, crops_di
                 prev_text = best_match['text']
                 can_reuse = (
                     best_match['frames_reused'] < FREEZE_FRAMES
-                    and valid_char_count(prev_text) >= MIN_VALID_CHARS
+                    and is_valid_plate_structure(prev_text)
                 )
             else:
                 plate_id = next_id

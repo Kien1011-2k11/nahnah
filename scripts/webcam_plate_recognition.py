@@ -149,7 +149,7 @@ while cap.isOpened():
             prev_text = best_match['text']
             can_reuse = (
                 best_match['frames_reused'] < FREEZE_FRAMES
-                and valid_char_count(prev_text) >= MIN_VALID_CHARS
+                and is_valid_plate_structure(prev_text)
             )
         else:
             plate_id = next_id
